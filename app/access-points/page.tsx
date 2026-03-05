@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,7 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useRouter } from "next/navigation";
-import { Plus, History, Upload, Search, X } from "lucide-react";
+import { Plus, History, Upload, Search, X, Camera, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 
 interface Medicion {
@@ -57,6 +57,7 @@ interface AccessPoint {
   mac: string;
   codPatrimonial: string;
   pabellon: string;
+  piso: string;
   ubicacion: string;
   nombreSenal: string;
   densidadSenal: string;
@@ -71,6 +72,7 @@ const initialForm = {
   mac: "",
   codPatrimonial: "",
   pabellon: "",
+  piso: "",
   ubicacion: "",
   nombreSenal: "",
   densidadSenal: "",
@@ -88,8 +90,14 @@ export default function AccessPointsPage() {
   const [selectedAP, setSelectedAP] = useState<AccessPoint | null>(null);
   const [aula, setAula] = useState("");
   const [pingFile, setPingFile] = useState<File | null>(null);
+  const [pingPreview, setPingPreview] = useState<string | null>(null);
   const [speedFile, setSpeedFile] = useState<File | null>(null);
+  const [speedPreview, setSpeedPreview] = useState<string | null>(null);
   const [notas, setNotas] = useState("");
+  const pingCameraRef = useRef<HTMLInputElement>(null);
+  const pingFileRef = useRef<HTMLInputElement>(null);
+  const speedCameraRef = useRef<HTMLInputElement>(null);
+  const speedFileRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPabellon, setFilterPabellon] = useState("all");
 
@@ -123,6 +131,29 @@ export default function AccessPointsPage() {
     }
   };
 
+  const handleFileSelect = (
+    file: File | null,
+    setFile: (f: File | null) => void,
+    setPreview: (p: string | null) => void
+  ) => {
+    setFile(file);
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setPreview(url);
+    } else {
+      setPreview(null);
+    }
+  };
+
+  const resetMedicionForm = () => {
+    setAula("");
+    setPingFile(null);
+    setPingPreview(null);
+    setSpeedFile(null);
+    setSpeedPreview(null);
+    setNotas("");
+  };
+
   const uploadFile = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append("file", file);
@@ -150,10 +181,7 @@ export default function AccessPointsPage() {
         }),
       });
       if (!res.ok) throw new Error();
-      setAula("");
-      setPingFile(null);
-      setSpeedFile(null);
-      setNotas("");
+      resetMedicionForm();
       setOpenMedicion(false);
       await fetchAPs();
       toast.success("Medicion registrada correctamente", {
@@ -229,11 +257,33 @@ export default function AccessPointsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="pabellon">Pabellon</Label>
-                <Input id="pabellon" value={form.pabellon} onChange={(e) => setForm({ ...form, pabellon: e.target.value })} placeholder="Ej: Pabellon A" />
+                <Select value={form.pabellon} onValueChange={(v) => setForm({ ...form, pabellon: v })}>
+                  <SelectTrigger id="pabellon" className="cursor-pointer">
+                    <SelectValue placeholder="Seleccionar pabellon" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pabellon A">Pabellon A</SelectItem>
+                    <SelectItem value="Pabellon B">Pabellon B</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="piso">Piso</Label>
+                <Select value={form.piso} onValueChange={(v) => setForm({ ...form, piso: v })}>
+                  <SelectTrigger id="piso" className="cursor-pointer">
+                    <SelectValue placeholder="Seleccionar piso" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Piso 1">Piso 1</SelectItem>
+                    <SelectItem value="Piso 2">Piso 2</SelectItem>
+                    <SelectItem value="Piso 3">Piso 3</SelectItem>
+                    <SelectItem value="Piso 4">Piso 4</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2 col-span-2">
                 <Label htmlFor="ubicacion">Ubicacion</Label>
-                <Input id="ubicacion" value={form.ubicacion} onChange={(e) => setForm({ ...form, ubicacion: e.target.value })} placeholder="Ej: Segundo piso, oficina 201" />
+                <Input id="ubicacion" value={form.ubicacion} onChange={(e) => setForm({ ...form, ubicacion: e.target.value })} placeholder="Ej: Oficina 201, Sala de reuniones" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="nombreSenal">Nombre de Senal</Label>
@@ -323,6 +373,7 @@ export default function AccessPointsPage() {
                   <TableHead>MAC</TableHead>
                   <TableHead>Cod. Patrimonial</TableHead>
                   <TableHead>Pabellon</TableHead>
+                  <TableHead>Piso</TableHead>
                   <TableHead>Ubicacion</TableHead>
                   <TableHead>Senal</TableHead>
                   <TableHead>Densidad</TableHead>
@@ -333,7 +384,7 @@ export default function AccessPointsPage() {
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                       No se encontraron Access Points
                     </TableCell>
                   </TableRow>
@@ -348,6 +399,7 @@ export default function AccessPointsPage() {
                       </TableCell>
                       <TableCell>{ap.codPatrimonial}</TableCell>
                       <TableCell><Badge variant="secondary">{ap.pabellon}</Badge></TableCell>
+                      <TableCell>{ap.piso}</TableCell>
                       <TableCell>{ap.ubicacion}</TableCell>
                       <TableCell>{ap.nombreSenal}</TableCell>
                       <TableCell>{ap.densidadSenal}</TableCell>
@@ -372,7 +424,7 @@ export default function AccessPointsPage() {
       </Card>
 
       {/* Dialog: Add Medicion */}
-      <Dialog open={openMedicion} onOpenChange={setOpenMedicion}>
+      <Dialog open={openMedicion} onOpenChange={(open) => { if (!open) resetMedicionForm(); setOpenMedicion(open); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Nueva Medicion</DialogTitle>
@@ -385,14 +437,71 @@ export default function AccessPointsPage() {
               <Label htmlFor="aula">Aula (punto de medicion)</Label>
               <Input id="aula" value={aula} onChange={(e) => setAula(e.target.value)} placeholder="Ej: Aula 201, Lab. Computo 1" />
             </div>
+
+            {/* Ping capture */}
             <div className="space-y-2">
               <Label>Captura de Ping 8.8.8.8</Label>
-              <Input type="file" accept="image/*" className="cursor-pointer" onChange={(e) => setPingFile(e.target.files?.[0] || null)} />
+              <input ref={pingCameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileSelect(e.target.files?.[0] || null, setPingFile, setPingPreview)} />
+              <input ref={pingFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFileSelect(e.target.files?.[0] || null, setPingFile, setPingPreview)} />
+              {pingPreview ? (
+                <div className="relative group">
+                  <img src={pingPreview} alt="Ping preview" className="w-full h-40 object-cover rounded-lg border" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                    <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => pingCameraRef.current?.click()}>
+                      <Camera className="mr-1 h-4 w-4" /> Retomar
+                    </Button>
+                    <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => pingFileRef.current?.click()}>
+                      <ImageIcon className="mr-1 h-4 w-4" /> Cambiar
+                    </Button>
+                    <Button size="sm" variant="destructive" className="cursor-pointer" onClick={() => { setPingFile(null); setPingPreview(null); }}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" className="flex-1 cursor-pointer" onClick={() => pingCameraRef.current?.click()}>
+                    <Camera className="mr-2 h-4 w-4" /> Tomar Foto
+                  </Button>
+                  <Button type="button" variant="outline" className="flex-1 cursor-pointer" onClick={() => pingFileRef.current?.click()}>
+                    <ImageIcon className="mr-2 h-4 w-4" /> Galeria / Archivo
+                  </Button>
+                </div>
+              )}
             </div>
+
+            {/* Speed capture */}
             <div className="space-y-2">
               <Label>Captura de Velocidad de Internet</Label>
-              <Input type="file" accept="image/*" className="cursor-pointer" onChange={(e) => setSpeedFile(e.target.files?.[0] || null)} />
+              <input ref={speedCameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileSelect(e.target.files?.[0] || null, setSpeedFile, setSpeedPreview)} />
+              <input ref={speedFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFileSelect(e.target.files?.[0] || null, setSpeedFile, setSpeedPreview)} />
+              {speedPreview ? (
+                <div className="relative group">
+                  <img src={speedPreview} alt="Speed preview" className="w-full h-40 object-cover rounded-lg border" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                    <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => speedCameraRef.current?.click()}>
+                      <Camera className="mr-1 h-4 w-4" /> Retomar
+                    </Button>
+                    <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => speedFileRef.current?.click()}>
+                      <ImageIcon className="mr-1 h-4 w-4" /> Cambiar
+                    </Button>
+                    <Button size="sm" variant="destructive" className="cursor-pointer" onClick={() => { setSpeedFile(null); setSpeedPreview(null); }}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" className="flex-1 cursor-pointer" onClick={() => speedCameraRef.current?.click()}>
+                    <Camera className="mr-2 h-4 w-4" /> Tomar Foto
+                  </Button>
+                  <Button type="button" variant="outline" className="flex-1 cursor-pointer" onClick={() => speedFileRef.current?.click()}>
+                    <ImageIcon className="mr-2 h-4 w-4" /> Galeria / Archivo
+                  </Button>
+                </div>
+              )}
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="notas">Notas (opcional)</Label>
               <Textarea id="notas" value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Observaciones adicionales..." />

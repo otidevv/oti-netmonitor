@@ -5,6 +5,11 @@ interface VerificacionData {
   carreraProfesional: string;
   cantidadAulas: number;
   nombresAulas: string[];
+  seccionProyector?: boolean;
+  seccionMinipc?: boolean;
+  seccionPizarra?: boolean;
+  seccionAudio?: boolean;
+  seccionInternet?: boolean;
   proyectorLimpieza: boolean;
   proyectorEncendido: boolean;
   proyectorCalibracion: boolean;
@@ -98,59 +103,78 @@ export function generateConstanciaPDF(data: VerificacionData) {
     y += wrapped.length * 5;
   }
 
+  let sectionNum = 1;
+
   // 1. Proyector
-  section("1. Proyector multimedia");
-  item("Limpieza externa e interna (filtro y lente)", data.proyectorLimpieza);
-  item("Verificacion del correcto encendido y apagado", data.proyectorEncendido);
-  item("Calibracion de imagen (enfoque, nitidez, tamano y alineacion)", data.proyectorCalibracion);
-  item(
-    "Prueba de conectividad mediante cable HDMI",
-    data.proyectorHdmi,
-    data.proyectorHdmiEstado || undefined
-  );
-  y += 2;
+  if (data.seccionProyector !== false) {
+    section(`${sectionNum}. Proyector multimedia`);
+    sectionNum++;
+    item("Limpieza externa e interna (filtro y lente)", data.proyectorLimpieza);
+    item("Verificacion del correcto encendido y apagado", data.proyectorEncendido);
+    item("Calibracion de imagen (enfoque, nitidez, tamano y alineacion)", data.proyectorCalibracion);
+    item(
+      "Prueba de conectividad mediante cable HDMI",
+      data.proyectorHdmi,
+      data.proyectorHdmiEstado || undefined
+    );
+    y += 2;
+  }
 
   // 2. Mini PC
-  section("2. Mini PC");
-  item("Verificacion de encendido, funcionamiento general y estado fisico", data.minipcEncendido);
-  item("Comprobacion del sistema operativo actualizado y activado (Windows 11)", data.minipcSistemaOperativo);
-  if (data.minipcIpNombre) {
-    doc.text(`     IP / Nombre PC: ${data.minipcIpNombre}`, margin + 5, y);
-    y += 5;
+  if (data.seccionMinipc !== false) {
+    section(`${sectionNum}. Mini PC`);
+    sectionNum++;
+    item("Verificacion de encendido, funcionamiento general y estado fisico", data.minipcEncendido);
+    item("Comprobacion del sistema operativo actualizado y activado (Windows 11)", data.minipcSistemaOperativo);
+    if (data.minipcIpNombre) {
+      doc.text(`     IP / Nombre PC: ${data.minipcIpNombre}`, margin + 5, y);
+      y += 5;
+    }
+    item("Revision y actualizacion de software antivirus (Sophos)", data.minipcAntivirus);
+    item("Verificacion del paquete Microsoft Office instalado y operativo", data.minipcOffice);
+    if (data.minipcTiempoUso) {
+      doc.text(`     Tiempo de uso: ${data.minipcTiempoUso}`, margin + 5, y);
+      y += 5;
+    }
+    item(
+      "Revision y operatividad de perifericos: teclado y mouse",
+      data.minipcPerifericos,
+      data.minipcPerifericosEstado || undefined
+    );
+    item("Conectividad a red institucional e internet (UNAMAD WiFi)", data.minipcConectividad);
+    y += 2;
   }
-  item("Revision y actualizacion de software antivirus (Sophos)", data.minipcAntivirus);
-  item("Verificacion del paquete Microsoft Office instalado y operativo", data.minipcOffice);
-  if (data.minipcTiempoUso) {
-    doc.text(`     Tiempo de uso: ${data.minipcTiempoUso}`, margin + 5, y);
-    y += 5;
-  }
-  item(
-    "Revision y operatividad de perifericos: teclado y mouse",
-    data.minipcPerifericos,
-    data.minipcPerifericosEstado || undefined
-  );
-  item("Conectividad a red institucional e internet (UNAMAD WiFi)", data.minipcConectividad);
-  y += 2;
 
   // 3. Pizarra
-  section("3. Pizarra interactiva y/o Ecran");
-  item("Verificacion de instalacion y fijacion adecuada a pared o soporte", data.pizarraInstalacion);
-  item("Calibracion tactil y precision de escritura digital", data.pizarraCalibracion);
-  item("Prueba de funcionamiento con software interactivo", data.pizarraSoftware);
-  item("Sincronizacion con el Mini PC y proyector", data.pizarraSincronizacion);
-  y += 2;
+  if (data.seccionPizarra !== false) {
+    section(`${sectionNum}. Pizarra interactiva y/o Ecran`);
+    sectionNum++;
+    item("Verificacion de instalacion y fijacion adecuada a pared o soporte", data.pizarraInstalacion);
+    item("Calibracion tactil y precision de escritura digital", data.pizarraCalibracion);
+    item("Prueba de funcionamiento con software interactivo", data.pizarraSoftware);
+    item("Sincronizacion con el Mini PC y proyector", data.pizarraSincronizacion);
+    y += 2;
+  }
 
   // 4. Audio
-  section("4. Sistema de audio (parlantes y/o amplificador)");
-  item("Prueba de salida de sonido en diferentes niveles de volumen", data.audioSonido);
-  item("Verificacion de nitidez y ausencia de interferencias o distorsion", data.audioNitidez);
-  y += 2;
+  if (data.seccionAudio !== false) {
+    section(`${sectionNum}. Sistema de audio (parlantes y/o amplificador)`);
+    sectionNum++;
+    item("Prueba de salida de sonido en diferentes niveles de volumen", data.audioSonido);
+    item("Verificacion de nitidez y ausencia de interferencias o distorsion", data.audioNitidez);
+    y += 2;
+  }
 
   // 5. Internet
-  section("5. Internet - Access Point");
-  item("Prueba de conectividad inalambrica (WiFi) y estabilidad de senal", data.internetConectividad);
-  item("Revision de cobertura adecuada dentro del aula", data.internetCobertura);
-  y += 6;
+  if (data.seccionInternet !== false) {
+    section(`${sectionNum}. Internet - Access Point`);
+    sectionNum++;
+    item("Prueba de conectividad inalambrica (WiFi) y estabilidad de senal", data.internetConectividad);
+    item("Revision de cobertura adecuada dentro del aula", data.internetCobertura);
+    y += 2;
+  }
+
+  y += 4;
 
   // Check if we need a new page
   if (y > 240) {

@@ -46,6 +46,7 @@ interface AccessPoint {
   mac: string;
   codPatrimonial: string;
   pabellon: string;
+  piso: string;
   ubicacion: string;
   nombreSenal: string;
   densidadSenal: string;
@@ -127,7 +128,7 @@ export default function HistorialPage() {
             Historial de Mediciones - {ap.ap}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {ap.nombreSenal} | {ap.pabellon} | {ap.ubicacion}
+            {ap.nombreSenal} | {ap.pabellon} | {ap.piso} | {ap.ubicacion}
           </p>
         </div>
       </div>
@@ -164,6 +165,10 @@ export default function HistorialPage() {
             <div>
               <span className="text-muted-foreground">Pabellon:</span>{" "}
               <Badge variant="secondary">{ap.pabellon}</Badge>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Piso:</span>{" "}
+              <span className="font-medium">{ap.piso}</span>
             </div>
             <div>
               <span className="text-muted-foreground">Senal:</span>{" "}

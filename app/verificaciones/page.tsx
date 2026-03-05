@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,7 +31,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, FileText, Eye } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Plus, FileText, Eye, Image as ImageIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { generateConstanciaPDF } from "@/lib/generate-constancia";
 
@@ -40,6 +42,11 @@ interface Verificacion {
   carreraProfesional: string;
   cantidadAulas: number;
   nombresAulas: string[];
+  seccionProyector: boolean;
+  seccionMinipc: boolean;
+  seccionPizarra: boolean;
+  seccionAudio: boolean;
+  seccionInternet: boolean;
   proyectorLimpieza: boolean;
   proyectorEncendido: boolean;
   proyectorCalibracion: boolean;
@@ -68,6 +75,30 @@ interface Verificacion {
   operativas: boolean;
   observaciones: string | null;
   createdAt: string;
+}
+
+function ImageOverlay({ src, onClose }: { src: string; onClose: () => void }) {
+  return createPortal(
+    <div
+      style={{ pointerEvents: "auto" }}
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 cursor-pointer"
+      onMouseDown={onClose}
+    >
+      <button
+        onMouseDown={(e) => { e.stopPropagation(); onClose(); }}
+        className="absolute top-4 right-4 cursor-pointer text-white bg-white/10 hover:bg-white/25 rounded-full p-2 transition-colors z-10"
+      >
+        <X className="h-8 w-8" />
+      </button>
+      <img
+        src={src}
+        alt="Preview"
+        className="max-w-full max-h-[90vh] object-contain rounded-lg"
+        onMouseDown={(e) => e.stopPropagation()}
+      />
+    </div>,
+    document.body
+  );
 }
 
 function Checkbox({
@@ -100,6 +131,11 @@ const defaultForm = {
   carreraProfesional: "",
   cantidadAulas: 5,
   aulasText: "",
+  seccionProyector: true,
+  seccionMinipc: true,
+  seccionPizarra: true,
+  seccionAudio: true,
+  seccionInternet: true,
   proyectorLimpieza: false,
   proyectorEncendido: false,
   proyectorCalibracion: false,
@@ -133,6 +169,10 @@ export default function VerificacionesPage() {
   const [openCreate, setOpenCreate] = useState(false);
   const [openDetail, setOpenDetail] = useState(false);
   const [selected, setSelected] = useState<Verificacion | null>(null);
+  const [proyectorCalibracionFile, setProyectorCalibracionFile] = useState<File | null>(null);
+  const [minipcConectividadFile, setMinipcConectividadFile] = useState<File | null>(null);
+  const [internetConectividadFile, setInternetConectividadFile] = useState<File | null>(null);
+  const [previewImage, setPreviewImage] = useState("");
 
   const fetchData = useCallback(async () => {
     const res = await fetch("/api/verificaciones");
@@ -149,43 +189,68 @@ export default function VerificacionesPage() {
     val: (typeof defaultForm)[K]
   ) => setForm((prev) => ({ ...prev, [key]: val }));
 
+  const uploadFile = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    const data = await res.json();
+    return data.url;
+  };
+
   const handleCreate = async () => {
     setLoading(true);
     const nombresAulas = form.aulasText
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-    const payload = {
-      fecha: form.fecha,
-      carreraProfesional: form.carreraProfesional,
-      cantidadAulas: form.cantidadAulas,
-      nombresAulas,
-      proyectorLimpieza: form.proyectorLimpieza,
-      proyectorEncendido: form.proyectorEncendido,
-      proyectorCalibracion: form.proyectorCalibracion,
-      proyectorHdmi: form.proyectorHdmi,
-      proyectorHdmiEstado: form.proyectorHdmiEstado || null,
-      minipcEncendido: form.minipcEncendido,
-      minipcSistemaOperativo: form.minipcSistemaOperativo,
-      minipcIpNombre: form.minipcIpNombre || null,
-      minipcAntivirus: form.minipcAntivirus,
-      minipcOffice: form.minipcOffice,
-      minipcTiempoUso: form.minipcTiempoUso || null,
-      minipcPerifericos: form.minipcPerifericos,
-      minipcPerifericosEstado: form.minipcPerifericosEstado || null,
-      minipcConectividad: form.minipcConectividad,
-      pizarraInstalacion: form.pizarraInstalacion,
-      pizarraCalibracion: form.pizarraCalibracion,
-      pizarraSoftware: form.pizarraSoftware,
-      pizarraSincronizacion: form.pizarraSincronizacion,
-      audioSonido: form.audioSonido,
-      audioNitidez: form.audioNitidez,
-      internetConectividad: form.internetConectividad,
-      internetCobertura: form.internetCobertura,
-      operativas: form.operativas,
-      observaciones: form.observaciones || null,
-    };
+
     try {
+      // Upload images in parallel
+      const [proyectorImgUrl, minipcImgUrl, internetImgUrl] = await Promise.all([
+        proyectorCalibracionFile ? uploadFile(proyectorCalibracionFile) : Promise.resolve(null),
+        minipcConectividadFile ? uploadFile(minipcConectividadFile) : Promise.resolve(null),
+        internetConectividadFile ? uploadFile(internetConectividadFile) : Promise.resolve(null),
+      ]);
+
+      const payload = {
+        fecha: form.fecha,
+        carreraProfesional: form.carreraProfesional,
+        cantidadAulas: form.cantidadAulas,
+        nombresAulas,
+        seccionProyector: form.seccionProyector,
+        seccionMinipc: form.seccionMinipc,
+        seccionPizarra: form.seccionPizarra,
+        seccionAudio: form.seccionAudio,
+        seccionInternet: form.seccionInternet,
+        proyectorLimpieza: form.proyectorLimpieza,
+        proyectorEncendido: form.proyectorEncendido,
+        proyectorCalibracion: form.proyectorCalibracion,
+        proyectorCalibracionImg: proyectorImgUrl,
+        proyectorHdmi: form.proyectorHdmi,
+        proyectorHdmiEstado: form.proyectorHdmiEstado || null,
+        minipcEncendido: form.minipcEncendido,
+        minipcSistemaOperativo: form.minipcSistemaOperativo,
+        minipcIpNombre: form.minipcIpNombre || null,
+        minipcAntivirus: form.minipcAntivirus,
+        minipcOffice: form.minipcOffice,
+        minipcTiempoUso: form.minipcTiempoUso || null,
+        minipcPerifericos: form.minipcPerifericos,
+        minipcPerifericosEstado: form.minipcPerifericosEstado || null,
+        minipcConectividad: form.minipcConectividad,
+        minipcConectividadImg: minipcImgUrl,
+        pizarraInstalacion: form.pizarraInstalacion,
+        pizarraCalibracion: form.pizarraCalibracion,
+        pizarraSoftware: form.pizarraSoftware,
+        pizarraSincronizacion: form.pizarraSincronizacion,
+        audioSonido: form.audioSonido,
+        audioNitidez: form.audioNitidez,
+        internetConectividad: form.internetConectividad,
+        internetConectividadImg: internetImgUrl,
+        internetCobertura: form.internetCobertura,
+        operativas: form.operativas,
+        observaciones: form.observaciones || null,
+      };
+
       const res = await fetch("/api/verificaciones", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -193,6 +258,9 @@ export default function VerificacionesPage() {
       });
       if (!res.ok) throw new Error();
       setForm(defaultForm);
+      setProyectorCalibracionFile(null);
+      setMinipcConectividadFile(null);
+      setInternetConectividadFile(null);
       setOpenCreate(false);
       await fetchData();
       toast.success("Verificacion registrada correctamente", {
@@ -211,6 +279,11 @@ export default function VerificacionesPage() {
       carreraProfesional: v.carreraProfesional,
       cantidadAulas: v.cantidadAulas,
       nombresAulas: v.nombresAulas,
+      seccionProyector: v.seccionProyector,
+      seccionMinipc: v.seccionMinipc,
+      seccionPizarra: v.seccionPizarra,
+      seccionAudio: v.seccionAudio,
+      seccionInternet: v.seccionInternet,
       proyectorLimpieza: v.proyectorLimpieza,
       proyectorEncendido: v.proyectorEncendido,
       proyectorCalibracion: v.proyectorCalibracion,
@@ -247,6 +320,10 @@ export default function VerificacionesPage() {
     ) : (
       <Badge variant="destructive">No</Badge>
     );
+
+  const naBadge = () => (
+    <Badge variant="outline" className="text-muted-foreground">N/A</Badge>
+  );
 
   return (
     <main className="container mx-auto px-4 py-6 space-y-6">
@@ -329,57 +406,95 @@ export default function VerificacionesPage() {
 
               {/* 1. Proyector */}
               <div>
-                <h3 className="font-semibold mb-3">
-                  1. Proyector multimedia
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <Checkbox
-                    id="pLimpieza"
-                    checked={form.proyectorLimpieza}
-                    onChange={(v) => set("proyectorLimpieza", v)}
-                    label="Limpieza externa e interna (filtro y lente)"
-                  />
-                  <Checkbox
-                    id="pEncendido"
-                    checked={form.proyectorEncendido}
-                    onChange={(v) => set("proyectorEncendido", v)}
-                    label="Verificacion del correcto encendido y apagado"
-                  />
-                  <Checkbox
-                    id="pCalibracion"
-                    checked={form.proyectorCalibracion}
-                    onChange={(v) => set("proyectorCalibracion", v)}
-                    label="Calibracion de imagen (enfoque, nitidez, tamano)"
-                  />
-                  <Checkbox
-                    id="pHdmi"
-                    checked={form.proyectorHdmi}
-                    onChange={(v) => set("proyectorHdmi", v)}
-                    label="Conectividad mediante cable HDMI"
-                  />
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold">
+                    1. Proyector multimedia
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="toggleProyector" className="text-sm text-muted-foreground">
+                      {form.seccionProyector ? "Habilitado" : "No aplica"}
+                    </Label>
+                    <Switch
+                      id="toggleProyector"
+                      checked={form.seccionProyector}
+                      onCheckedChange={(v) => set("seccionProyector", v)}
+                    />
+                  </div>
                 </div>
-                <div className="mt-2">
-                  <Label htmlFor="hdmiEstado" className="text-sm">
-                    Estado del cable HDMI
-                  </Label>
-                  <Input
-                    id="hdmiEstado"
-                    value={form.proyectorHdmiEstado}
-                    onChange={(e) =>
-                      set("proyectorHdmiEstado", e.target.value)
-                    }
-                    placeholder="Ej: Buen estado"
-                    className="mt-1"
-                  />
-                </div>
+                {form.seccionProyector && (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <Checkbox
+                        id="pLimpieza"
+                        checked={form.proyectorLimpieza}
+                        onChange={(v) => set("proyectorLimpieza", v)}
+                        label="Limpieza externa e interna (filtro y lente)"
+                      />
+                      <Checkbox
+                        id="pEncendido"
+                        checked={form.proyectorEncendido}
+                        onChange={(v) => set("proyectorEncendido", v)}
+                        label="Verificacion del correcto encendido y apagado"
+                      />
+                      <Checkbox
+                        id="pCalibracion"
+                        checked={form.proyectorCalibracion}
+                        onChange={(v) => set("proyectorCalibracion", v)}
+                        label="Calibracion de imagen (enfoque, nitidez, tamano)"
+                      />
+                      <Checkbox
+                        id="pHdmi"
+                        checked={form.proyectorHdmi}
+                        onChange={(v) => set("proyectorHdmi", v)}
+                        label="Conectividad mediante cable HDMI"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                      <div className="space-y-1">
+                        <Label htmlFor="hdmiEstado" className="text-sm">
+                          Estado del cable HDMI
+                        </Label>
+                        <Input
+                          id="hdmiEstado"
+                          value={form.proyectorHdmiEstado}
+                          onChange={(e) =>
+                            set("proyectorHdmiEstado", e.target.value)
+                          }
+                          placeholder="Ej: Buen estado"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-sm">Captura de calibracion (opcional)</Label>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          className="cursor-pointer"
+                          onChange={(e) => setProyectorCalibracionFile(e.target.files?.[0] || null)}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               <Separator />
 
               {/* 2. Mini PC */}
               <div>
-                <h3 className="font-semibold mb-3">2. Mini PC</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold">2. Mini PC</h3>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="toggleMinipc" className="text-sm text-muted-foreground">
+                      {form.seccionMinipc ? "Habilitado" : "No aplica"}
+                    </Label>
+                    <Switch
+                      id="toggleMinipc"
+                      checked={form.seccionMinipc}
+                      onCheckedChange={(v) => set("seccionMinipc", v)}
+                    />
+                  </div>
+                </div>
+                {form.seccionMinipc && (<><div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <Checkbox
                     id="mEncendido"
                     checked={form.minipcEncendido}
@@ -451,87 +566,150 @@ export default function VerificacionesPage() {
                     />
                   </div>
                 </div>
+                <div className="mt-2">
+                  <Label className="text-sm">Captura de conectividad Mini PC (opcional)</Label>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    className="cursor-pointer mt-1"
+                    onChange={(e) => setMinipcConectividadFile(e.target.files?.[0] || null)}
+                  />
+                </div>
+                </>)}
               </div>
 
               <Separator />
 
               {/* 3. Pizarra */}
               <div>
-                <h3 className="font-semibold mb-3">
-                  3. Pizarra interactiva y/o Ecran
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <Checkbox
-                    id="piInstalacion"
-                    checked={form.pizarraInstalacion}
-                    onChange={(v) => set("pizarraInstalacion", v)}
-                    label="Instalacion y fijacion adecuada"
-                  />
-                  <Checkbox
-                    id="piCalibracion"
-                    checked={form.pizarraCalibracion}
-                    onChange={(v) => set("pizarraCalibracion", v)}
-                    label="Calibracion tactil y precision de escritura"
-                  />
-                  <Checkbox
-                    id="piSoftware"
-                    checked={form.pizarraSoftware}
-                    onChange={(v) => set("pizarraSoftware", v)}
-                    label="Funcionamiento con software interactivo"
-                  />
-                  <Checkbox
-                    id="piSync"
-                    checked={form.pizarraSincronizacion}
-                    onChange={(v) => set("pizarraSincronizacion", v)}
-                    label="Sincronizacion con Mini PC y proyector"
-                  />
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold">
+                    3. Pizarra interactiva y/o Ecran
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="togglePizarra" className="text-sm text-muted-foreground">
+                      {form.seccionPizarra ? "Habilitado" : "No aplica"}
+                    </Label>
+                    <Switch
+                      id="togglePizarra"
+                      checked={form.seccionPizarra}
+                      onCheckedChange={(v) => set("seccionPizarra", v)}
+                    />
+                  </div>
                 </div>
+                {form.seccionPizarra && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <Checkbox
+                      id="piInstalacion"
+                      checked={form.pizarraInstalacion}
+                      onChange={(v) => set("pizarraInstalacion", v)}
+                      label="Instalacion y fijacion adecuada"
+                    />
+                    <Checkbox
+                      id="piCalibracion"
+                      checked={form.pizarraCalibracion}
+                      onChange={(v) => set("pizarraCalibracion", v)}
+                      label="Calibracion tactil y precision de escritura"
+                    />
+                    <Checkbox
+                      id="piSoftware"
+                      checked={form.pizarraSoftware}
+                      onChange={(v) => set("pizarraSoftware", v)}
+                      label="Funcionamiento con software interactivo"
+                    />
+                    <Checkbox
+                      id="piSync"
+                      checked={form.pizarraSincronizacion}
+                      onChange={(v) => set("pizarraSincronizacion", v)}
+                      label="Sincronizacion con Mini PC y proyector"
+                    />
+                  </div>
+                )}
               </div>
 
               <Separator />
 
               {/* 4. Audio */}
               <div>
-                <h3 className="font-semibold mb-3">
-                  4. Sistema de audio
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <Checkbox
-                    id="aSonido"
-                    checked={form.audioSonido}
-                    onChange={(v) => set("audioSonido", v)}
-                    label="Salida de sonido en diferentes niveles"
-                  />
-                  <Checkbox
-                    id="aNitidez"
-                    checked={form.audioNitidez}
-                    onChange={(v) => set("audioNitidez", v)}
-                    label="Nitidez y ausencia de interferencias"
-                  />
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold">
+                    4. Sistema de audio
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="toggleAudio" className="text-sm text-muted-foreground">
+                      {form.seccionAudio ? "Habilitado" : "No aplica"}
+                    </Label>
+                    <Switch
+                      id="toggleAudio"
+                      checked={form.seccionAudio}
+                      onCheckedChange={(v) => set("seccionAudio", v)}
+                    />
+                  </div>
                 </div>
+                {form.seccionAudio && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <Checkbox
+                      id="aSonido"
+                      checked={form.audioSonido}
+                      onChange={(v) => set("audioSonido", v)}
+                      label="Salida de sonido en diferentes niveles"
+                    />
+                    <Checkbox
+                      id="aNitidez"
+                      checked={form.audioNitidez}
+                      onChange={(v) => set("audioNitidez", v)}
+                      label="Nitidez y ausencia de interferencias"
+                    />
+                  </div>
+                )}
               </div>
 
               <Separator />
 
               {/* 5. Internet */}
               <div>
-                <h3 className="font-semibold mb-3">
-                  5. Internet - Access Point
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <Checkbox
-                    id="iConectividad"
-                    checked={form.internetConectividad}
-                    onChange={(v) => set("internetConectividad", v)}
-                    label="Conectividad WiFi y estabilidad de senal"
-                  />
-                  <Checkbox
-                    id="iCobertura"
-                    checked={form.internetCobertura}
-                    onChange={(v) => set("internetCobertura", v)}
-                    label="Cobertura adecuada dentro del aula"
-                  />
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold">
+                    5. Internet - Access Point
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="toggleInternet" className="text-sm text-muted-foreground">
+                      {form.seccionInternet ? "Habilitado" : "No aplica"}
+                    </Label>
+                    <Switch
+                      id="toggleInternet"
+                      checked={form.seccionInternet}
+                      onCheckedChange={(v) => set("seccionInternet", v)}
+                    />
+                  </div>
                 </div>
+                {form.seccionInternet && (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <Checkbox
+                        id="iConectividad"
+                        checked={form.internetConectividad}
+                        onChange={(v) => set("internetConectividad", v)}
+                        label="Conectividad WiFi y estabilidad de senal"
+                      />
+                      <Checkbox
+                        id="iCobertura"
+                        checked={form.internetCobertura}
+                        onChange={(v) => set("internetCobertura", v)}
+                        label="Cobertura adecuada dentro del aula"
+                      />
+                    </div>
+                    <div className="mt-2">
+                      <Label className="text-sm">Captura de conectividad WiFi (opcional)</Label>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        className="cursor-pointer mt-1"
+                        onChange={(e) => setInternetConectividadFile(e.target.files?.[0] || null)}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               <Separator />
@@ -639,26 +817,32 @@ export default function VerificacionesPage() {
                   </TableRow>
                 ) : (
                   verificaciones.map((v) => {
-                    const proyOk =
-                      v.proyectorLimpieza &&
-                      v.proyectorEncendido &&
-                      v.proyectorCalibracion &&
-                      v.proyectorHdmi;
-                    const miniOk =
-                      v.minipcEncendido &&
-                      v.minipcSistemaOperativo &&
-                      v.minipcAntivirus &&
-                      v.minipcOffice &&
-                      v.minipcPerifericos &&
-                      v.minipcConectividad;
-                    const pizOk =
-                      v.pizarraInstalacion &&
-                      v.pizarraCalibracion &&
-                      v.pizarraSoftware &&
-                      v.pizarraSincronizacion;
-                    const audOk = v.audioSonido && v.audioNitidez;
-                    const intOk =
-                      v.internetConectividad && v.internetCobertura;
+                    const proyOk = v.seccionProyector
+                      ? v.proyectorLimpieza &&
+                        v.proyectorEncendido &&
+                        v.proyectorCalibracion &&
+                        v.proyectorHdmi
+                      : null;
+                    const miniOk = v.seccionMinipc
+                      ? v.minipcEncendido &&
+                        v.minipcSistemaOperativo &&
+                        v.minipcAntivirus &&
+                        v.minipcOffice &&
+                        v.minipcPerifericos &&
+                        v.minipcConectividad
+                      : null;
+                    const pizOk = v.seccionPizarra
+                      ? v.pizarraInstalacion &&
+                        v.pizarraCalibracion &&
+                        v.pizarraSoftware &&
+                        v.pizarraSincronizacion
+                      : null;
+                    const audOk = v.seccionAudio
+                      ? v.audioSonido && v.audioNitidez
+                      : null;
+                    const intOk = v.seccionInternet
+                      ? v.internetConectividad && v.internetCobertura
+                      : null;
 
                     return (
                       <TableRow key={v.id}>
@@ -673,11 +857,11 @@ export default function VerificacionesPage() {
                             {v.cantidadAulas} aulas
                           </Badge>
                         </TableCell>
-                        <TableCell>{checkMark(proyOk)}</TableCell>
-                        <TableCell>{checkMark(miniOk)}</TableCell>
-                        <TableCell>{checkMark(pizOk)}</TableCell>
-                        <TableCell>{checkMark(audOk)}</TableCell>
-                        <TableCell>{checkMark(intOk)}</TableCell>
+                        <TableCell>{proyOk === null ? naBadge() : checkMark(proyOk)}</TableCell>
+                        <TableCell>{miniOk === null ? naBadge() : checkMark(miniOk)}</TableCell>
+                        <TableCell>{pizOk === null ? naBadge() : checkMark(pizOk)}</TableCell>
+                        <TableCell>{audOk === null ? naBadge() : checkMark(audOk)}</TableCell>
+                        <TableCell>{intOk === null ? naBadge() : checkMark(intOk)}</TableCell>
                         <TableCell>
                           {v.operativas ? (
                             <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
@@ -723,8 +907,18 @@ export default function VerificacionesPage() {
       </Card>
 
       {/* Dialog: Detail */}
-      <Dialog open={openDetail} onOpenChange={setOpenDetail}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <Dialog
+        open={openDetail}
+        onOpenChange={(open) => {
+          if (!open && previewImage) return;
+          setOpenDetail(open);
+        }}
+      >
+        <DialogContent
+          className="max-w-3xl max-h-[90vh] overflow-y-auto"
+          onInteractOutside={(e) => { if (previewImage) e.preventDefault(); }}
+          onEscapeKeyDown={(e) => { if (previewImage) e.preventDefault(); }}
+        >
           <DialogHeader>
             <DialogTitle>Detalle de Verificacion</DialogTitle>
             <DialogDescription>
@@ -746,69 +940,108 @@ export default function VerificacionesPage() {
                 </div>
               </div>
 
-              <Separator />
+              {selected.seccionProyector && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="font-semibold mb-2">1. Proyector multimedia</h4>
+                    <div className="grid grid-cols-2 gap-1 text-sm">
+                      <div>Limpieza: {checkMark(selected.proyectorLimpieza)}</div>
+                      <div>Encendido: {checkMark(selected.proyectorEncendido)}</div>
+                      <div>Calibracion: {checkMark(selected.proyectorCalibracion)}</div>
+                      <div>HDMI: {checkMark(selected.proyectorHdmi)} {selected.proyectorHdmiEstado && `(${selected.proyectorHdmiEstado})`}</div>
+                    </div>
+                    {selected.proyectorCalibracionImg && (
+                      <div className="mt-2">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1"><ImageIcon className="h-3 w-3" /> Captura de calibracion</p>
+                        <button onClick={() => setPreviewImage(selected.proyectorCalibracionImg!)} className="border rounded-md overflow-hidden hover:ring-2 hover:ring-primary transition-all cursor-pointer">
+                          <img src={selected.proyectorCalibracionImg} alt="Calibracion" className="h-20 w-36 object-cover" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
-              <div>
-                <h4 className="font-semibold mb-2">1. Proyector multimedia</h4>
-                <div className="grid grid-cols-2 gap-1 text-sm">
-                  <div>Limpieza: {checkMark(selected.proyectorLimpieza)}</div>
-                  <div>Encendido: {checkMark(selected.proyectorEncendido)}</div>
-                  <div>Calibracion: {checkMark(selected.proyectorCalibracion)}</div>
-                  <div>HDMI: {checkMark(selected.proyectorHdmi)} {selected.proyectorHdmiEstado && `(${selected.proyectorHdmiEstado})`}</div>
-                </div>
-              </div>
+              {selected.seccionMinipc && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="font-semibold mb-2">2. Mini PC</h4>
+                    <div className="grid grid-cols-2 gap-1 text-sm">
+                      <div>Encendido: {checkMark(selected.minipcEncendido)}</div>
+                      <div>SO: {checkMark(selected.minipcSistemaOperativo)}</div>
+                      <div>Antivirus: {checkMark(selected.minipcAntivirus)}</div>
+                      <div>Office: {checkMark(selected.minipcOffice)}</div>
+                      <div>Perifericos: {checkMark(selected.minipcPerifericos)} {selected.minipcPerifericosEstado && `(${selected.minipcPerifericosEstado})`}</div>
+                      <div>Conectividad: {checkMark(selected.minipcConectividad)}</div>
+                    </div>
+                    {selected.minipcIpNombre && (
+                      <p className="text-sm mt-1">IP/Nombre: {selected.minipcIpNombre}</p>
+                    )}
+                    {selected.minipcTiempoUso && (
+                      <p className="text-sm">Tiempo de uso: {selected.minipcTiempoUso}</p>
+                    )}
+                    {selected.minipcConectividadImg && (
+                      <div className="mt-2">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1"><ImageIcon className="h-3 w-3" /> Captura de conectividad</p>
+                        <button onClick={() => setPreviewImage(selected.minipcConectividadImg!)} className="border rounded-md overflow-hidden hover:ring-2 hover:ring-primary transition-all cursor-pointer">
+                          <img src={selected.minipcConectividadImg} alt="Conectividad Mini PC" className="h-20 w-36 object-cover" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
-              <Separator />
+              {selected.seccionPizarra && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="font-semibold mb-2">3. Pizarra interactiva</h4>
+                    <div className="grid grid-cols-2 gap-1 text-sm">
+                      <div>Instalacion: {checkMark(selected.pizarraInstalacion)}</div>
+                      <div>Calibracion: {checkMark(selected.pizarraCalibracion)}</div>
+                      <div>Software: {checkMark(selected.pizarraSoftware)}</div>
+                      <div>Sincronizacion: {checkMark(selected.pizarraSincronizacion)}</div>
+                    </div>
+                  </div>
+                </>
+              )}
 
-              <div>
-                <h4 className="font-semibold mb-2">2. Mini PC</h4>
-                <div className="grid grid-cols-2 gap-1 text-sm">
-                  <div>Encendido: {checkMark(selected.minipcEncendido)}</div>
-                  <div>SO: {checkMark(selected.minipcSistemaOperativo)}</div>
-                  <div>Antivirus: {checkMark(selected.minipcAntivirus)}</div>
-                  <div>Office: {checkMark(selected.minipcOffice)}</div>
-                  <div>Perifericos: {checkMark(selected.minipcPerifericos)} {selected.minipcPerifericosEstado && `(${selected.minipcPerifericosEstado})`}</div>
-                  <div>Conectividad: {checkMark(selected.minipcConectividad)}</div>
-                </div>
-                {selected.minipcIpNombre && (
-                  <p className="text-sm mt-1">IP/Nombre: {selected.minipcIpNombre}</p>
-                )}
-                {selected.minipcTiempoUso && (
-                  <p className="text-sm">Tiempo de uso: {selected.minipcTiempoUso}</p>
-                )}
-              </div>
+              {selected.seccionAudio && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="font-semibold mb-2">4. Sistema de audio</h4>
+                    <div className="grid grid-cols-2 gap-1 text-sm">
+                      <div>Sonido: {checkMark(selected.audioSonido)}</div>
+                      <div>Nitidez: {checkMark(selected.audioNitidez)}</div>
+                    </div>
+                  </div>
+                </>
+              )}
 
-              <Separator />
-
-              <div>
-                <h4 className="font-semibold mb-2">3. Pizarra interactiva</h4>
-                <div className="grid grid-cols-2 gap-1 text-sm">
-                  <div>Instalacion: {checkMark(selected.pizarraInstalacion)}</div>
-                  <div>Calibracion: {checkMark(selected.pizarraCalibracion)}</div>
-                  <div>Software: {checkMark(selected.pizarraSoftware)}</div>
-                  <div>Sincronizacion: {checkMark(selected.pizarraSincronizacion)}</div>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div>
-                <h4 className="font-semibold mb-2">4. Sistema de audio</h4>
-                <div className="grid grid-cols-2 gap-1 text-sm">
-                  <div>Sonido: {checkMark(selected.audioSonido)}</div>
-                  <div>Nitidez: {checkMark(selected.audioNitidez)}</div>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div>
-                <h4 className="font-semibold mb-2">5. Internet - Access Point</h4>
-                <div className="grid grid-cols-2 gap-1 text-sm">
-                  <div>Conectividad: {checkMark(selected.internetConectividad)}</div>
-                  <div>Cobertura: {checkMark(selected.internetCobertura)}</div>
-                </div>
-              </div>
+              {selected.seccionInternet && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="font-semibold mb-2">5. Internet - Access Point</h4>
+                    <div className="grid grid-cols-2 gap-1 text-sm">
+                      <div>Conectividad: {checkMark(selected.internetConectividad)}</div>
+                      <div>Cobertura: {checkMark(selected.internetCobertura)}</div>
+                    </div>
+                    {selected.internetConectividadImg && (
+                      <div className="mt-2">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1"><ImageIcon className="h-3 w-3" /> Captura de conectividad WiFi</p>
+                        <button onClick={() => setPreviewImage(selected.internetConectividadImg!)} className="border rounded-md overflow-hidden hover:ring-2 hover:ring-primary transition-all cursor-pointer">
+                          <img src={selected.internetConectividadImg} alt="Conectividad WiFi" className="h-20 w-36 object-cover" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
               {selected.observaciones && (
                 <>
@@ -830,6 +1063,14 @@ export default function VerificacionesPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Image Overlay */}
+      {previewImage && (
+        <ImageOverlay
+          src={previewImage}
+          onClose={() => setPreviewImage("")}
+        />
+      )}
     </main>
   );
 }

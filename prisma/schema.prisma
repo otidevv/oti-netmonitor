@@ -15,6 +15,7 @@ model AccessPoint {
   mac             String
   codPatrimonial  String
   pabellon        String
+  piso            String   @default("")
   ubicacion       String
   nombreSenal     String
   densidadSenal   String
@@ -44,6 +45,13 @@ model Verificacion {
   carreraProfesional  String
   cantidadAulas       Int
   nombresAulas        String[]
+
+  // Section toggles
+  seccionProyector            Boolean @default(true)
+  seccionMinipc               Boolean @default(true)
+  seccionPizarra              Boolean @default(true)
+  seccionAudio                Boolean @default(true)
+  seccionInternet             Boolean @default(true)
 
   // 1. Proyector multimedia
   proyectorLimpieza           Boolean @default(false)
