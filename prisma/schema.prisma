@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model AccessPoint {
+  id              String   @id @default(cuid())
+  ap              String
+  marca           String
+  modelo          String
+  mac             String
+  codPatrimonial  String
+  pabellon        String
+  ubicacion       String
+  nombreSenal     String
+  densidadSenal   String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  mediciones      Medicion[]
+
+  @@map("access_points")
+}
+
+model Medicion {
+  id              String   @id @default(cuid())
+  accessPointId   String
+  accessPoint     AccessPoint @relation(fields: [accessPointId], references: [id], onDelete: Cascade)
+  aula            String   @default("")
+  pingImage       String
+  speedImage      String
+  notas           String?
+  createdAt       DateTime @default(now())
+
+  @@map("mediciones")
+}
+
+model Verificacion {
+  id                  String   @id @default(cuid())
+  fecha               DateTime
+  carreraProfesional  String
+  cantidadAulas       Int
+  nombresAulas        String[]
+
+  // 1. Proyector multimedia
+  proyectorLimpieza           Boolean @default(false)
+  proyectorEncendido          Boolean @default(false)
+  proyectorCalibracion        Boolean @default(false)
+  proyectorCalibracionImg     String?
+  proyectorHdmi               Boolean @default(false)
+  proyectorHdmiEstado         String?
+
+  // 2. Mini PC
+  minipcEncendido             Boolean @default(false)
+  minipcSistemaOperativo      Boolean @default(false)
+  minipcIpNombre              String?
+  minipcAntivirus             Boolean @default(false)
+  minipcOffice                Boolean @default(false)
+  minipcTiempoUso             String?
+  minipcPerifericos           Boolean @default(false)
+  minipcPerifericosEstado     String?
+  minipcConectividad          Boolean @default(false)
+  minipcConectividadImg       String?
+
+  // 3. Pizarra interactiva y/o Ecran
+  pizarraInstalacion          Boolean @default(false)
+  pizarraCalibracion          Boolean @default(false)
+  pizarraSoftware             Boolean @default(false)
+  pizarraSincronizacion       Boolean @default(false)
+
+  // 4. Sistema de audio
+  audioSonido                 Boolean @default(false)
+  audioNitidez                Boolean @default(false)
+
+  // 5. Internet - Access Point
+  internetConectividad        Boolean @default(false)
+  internetConectividadImg     String?
+  internetCobertura           Boolean @default(false)
+
+  // Resultado
+  operativas                  Boolean @default(true)
+  observaciones               String?
+
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  @@map("verificaciones")
+}
