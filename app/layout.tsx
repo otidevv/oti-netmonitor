@@ -17,6 +17,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "OTI NetMonitor",
   description: "Sistema de Registro de APs y Operatividad de Aulas Digitales",
+  icons: {
+    icon: "/logo/logo.png",
+  },
 };
 
 export default function RootLayout({
