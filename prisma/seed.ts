@@ -41,7 +41,7 @@ function extractUbicacion(nombre: string): string {
 
 async function main() {
   const xlsxPath = path.resolve(
-    "C:/Users/PC/Downloads/access_points_consolidado.xlsx"
+    __dirname, "../public/consolidado/access_points_consolidado.xlsx"
   );
   const wb = XLSX.readFile(xlsxPath);
   const ws = wb.Sheets[wb.SheetNames[0]];
