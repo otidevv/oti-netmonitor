@@ -102,6 +102,7 @@ export default function AccessPointsPage() {
   const speedFileRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPabellon, setFilterPabellon] = useState("all");
+  const [filterPiso, setFilterPiso] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [openEdit, setOpenEdit] = useState(false);
@@ -258,7 +259,9 @@ export default function AccessPointsPage() {
       ap.ubicacion.toLowerCase().includes(searchTerm.toLowerCase());
     const matchPabellon =
       filterPabellon === "all" || ap.pabellon === filterPabellon;
-    return matchSearch && matchPabellon;
+    const matchPiso =
+      filterPiso === "all" || ap.piso === filterPiso;
+    return matchSearch && matchPabellon && matchPiso;
   });
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
@@ -410,6 +413,18 @@ export default function AccessPointsPage() {
                 {pabellones.map((p) => (
                   <SelectItem key={p} value={p}>{p}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterPiso} onValueChange={(v) => { setFilterPiso(v); setCurrentPage(1); }}>
+              <SelectTrigger className="w-full sm:w-[160px]">
+                <SelectValue placeholder="Filtrar por piso" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los pisos</SelectItem>
+                <SelectItem value="Piso 1">Piso 1</SelectItem>
+                <SelectItem value="Piso 2">Piso 2</SelectItem>
+                <SelectItem value="Piso 3">Piso 3</SelectItem>
+                <SelectItem value="Piso 4">Piso 4</SelectItem>
               </SelectContent>
             </Select>
           </div>
