@@ -43,6 +43,7 @@ import { toast } from "sonner";
 interface Medicion {
   id: string;
   aula: string;
+  interfazImage: string;
   pingImage: string;
   speedImage: string;
   notas: string | null;
@@ -91,11 +92,15 @@ export default function AccessPointsPage() {
   const [previewImage, setPreviewImage] = useState("");
   const [selectedAP, setSelectedAP] = useState<AccessPoint | null>(null);
   const [aula, setAula] = useState("");
+  const [interfazFile, setInterfazFile] = useState<File | null>(null);
+  const [interfazPreview, setInterfazPreview] = useState<string | null>(null);
   const [pingFile, setPingFile] = useState<File | null>(null);
   const [pingPreview, setPingPreview] = useState<string | null>(null);
   const [speedFile, setSpeedFile] = useState<File | null>(null);
   const [speedPreview, setSpeedPreview] = useState<string | null>(null);
   const [notas, setNotas] = useState("");
+  const interfazCameraRef = useRef<HTMLInputElement>(null);
+  const interfazFileRef = useRef<HTMLInputElement>(null);
   const pingCameraRef = useRef<HTMLInputElement>(null);
   const pingFileRef = useRef<HTMLInputElement>(null);
   const speedCameraRef = useRef<HTMLInputElement>(null);
@@ -198,6 +203,8 @@ export default function AccessPointsPage() {
 
   const resetMedicionForm = () => {
     setAula("");
+    setInterfazFile(null);
+    setInterfazPreview(null);
     setPingFile(null);
     setPingPreview(null);
     setSpeedFile(null);
@@ -217,15 +224,18 @@ export default function AccessPointsPage() {
     if (!selectedAP || !pingFile || !speedFile || !aula) return;
     setLoading(true);
     try {
-      const [pingUrl, speedUrl] = await Promise.all([
+      const uploads = [
         uploadFile(pingFile),
         uploadFile(speedFile),
-      ]);
+        interfazFile ? uploadFile(interfazFile) : Promise.resolve(""),
+      ];
+      const [pingUrl, speedUrl, interfazUrl] = await Promise.all(uploads);
       const res = await fetch(`/api/access-points/${selectedAP.id}/mediciones`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           aula,
+          interfazImage: interfazUrl,
           pingImage: pingUrl,
           speedImage: speedUrl,
           notas: notas || null,
@@ -586,6 +596,38 @@ export default function AccessPointsPage() {
             <div className="space-y-2">
               <Label htmlFor="aula">Aula (punto de medicion)</Label>
               <Input id="aula" value={aula} onChange={(e) => setAula(e.target.value)} placeholder="Ej: Aula 201, Lab. Computo 1" />
+            </div>
+
+            {/* Interfaz capture */}
+            <div className="space-y-2">
+              <Label>Captura de Interfaz (opcional)</Label>
+              <input ref={interfazCameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileSelect(e.target.files?.[0] || null, setInterfazFile, setInterfazPreview)} />
+              <input ref={interfazFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFileSelect(e.target.files?.[0] || null, setInterfazFile, setInterfazPreview)} />
+              {interfazPreview ? (
+                <div className="relative group">
+                  <img src={interfazPreview} alt="Interfaz preview" className="w-full h-40 object-cover rounded-lg border" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                    <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => interfazCameraRef.current?.click()}>
+                      <Camera className="mr-1 h-4 w-4" /> Retomar
+                    </Button>
+                    <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => interfazFileRef.current?.click()}>
+                      <ImageIcon className="mr-1 h-4 w-4" /> Cambiar
+                    </Button>
+                    <Button size="sm" variant="destructive" className="cursor-pointer" onClick={() => { setInterfazFile(null); setInterfazPreview(null); }}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" className="flex-1 cursor-pointer" onClick={() => interfazCameraRef.current?.click()}>
+                    <Camera className="mr-2 h-4 w-4" /> Tomar Foto
+                  </Button>
+                  <Button type="button" variant="outline" className="flex-1 cursor-pointer" onClick={() => interfazFileRef.current?.click()}>
+                    <ImageIcon className="mr-2 h-4 w-4" /> Galeria / Archivo
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Ping capture */}

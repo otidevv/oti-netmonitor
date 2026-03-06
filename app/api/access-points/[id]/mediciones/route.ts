@@ -11,6 +11,7 @@ export async function POST(
     data: {
       accessPointId: id,
       aula: body.aula,
+      interfazImage: body.interfazImage || "",
       pingImage: body.pingImage,
       speedImage: body.speedImage,
       notas: body.notas || null,
