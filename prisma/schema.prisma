@@ -32,7 +32,8 @@ model Medicion {
   accessPointId   String
   accessPoint     AccessPoint @relation(fields: [accessPointId], references: [id], onDelete: Cascade)
   aula            String   @default("")
-  interfazImage   String   @default("")
+  interfaz24Image String   @default("")
+  interfaz5Image  String   @default("")
   pingImage       String
   speedImage      String
   notas           String?

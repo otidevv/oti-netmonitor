@@ -43,7 +43,8 @@ import { toast } from "sonner";
 interface Medicion {
   id: string;
   aula: string;
-  interfazImage: string;
+  interfaz24Image: string;
+  interfaz5Image: string;
   pingImage: string;
   speedImage: string;
   notas: string | null;
@@ -92,15 +93,19 @@ export default function AccessPointsPage() {
   const [previewImage, setPreviewImage] = useState("");
   const [selectedAP, setSelectedAP] = useState<AccessPoint | null>(null);
   const [aula, setAula] = useState("");
-  const [interfazFile, setInterfazFile] = useState<File | null>(null);
-  const [interfazPreview, setInterfazPreview] = useState<string | null>(null);
+  const [interfaz24File, setInterfaz24File] = useState<File | null>(null);
+  const [interfaz24Preview, setInterfaz24Preview] = useState<string | null>(null);
+  const [interfaz5File, setInterfaz5File] = useState<File | null>(null);
+  const [interfaz5Preview, setInterfaz5Preview] = useState<string | null>(null);
   const [pingFile, setPingFile] = useState<File | null>(null);
   const [pingPreview, setPingPreview] = useState<string | null>(null);
   const [speedFile, setSpeedFile] = useState<File | null>(null);
   const [speedPreview, setSpeedPreview] = useState<string | null>(null);
   const [notas, setNotas] = useState("");
-  const interfazCameraRef = useRef<HTMLInputElement>(null);
-  const interfazFileRef = useRef<HTMLInputElement>(null);
+  const interfaz24CameraRef = useRef<HTMLInputElement>(null);
+  const interfaz24FileRef = useRef<HTMLInputElement>(null);
+  const interfaz5CameraRef = useRef<HTMLInputElement>(null);
+  const interfaz5FileRef = useRef<HTMLInputElement>(null);
   const pingCameraRef = useRef<HTMLInputElement>(null);
   const pingFileRef = useRef<HTMLInputElement>(null);
   const speedCameraRef = useRef<HTMLInputElement>(null);
@@ -203,8 +208,10 @@ export default function AccessPointsPage() {
 
   const resetMedicionForm = () => {
     setAula("");
-    setInterfazFile(null);
-    setInterfazPreview(null);
+    setInterfaz24File(null);
+    setInterfaz24Preview(null);
+    setInterfaz5File(null);
+    setInterfaz5Preview(null);
     setPingFile(null);
     setPingPreview(null);
     setSpeedFile(null);
@@ -227,15 +234,17 @@ export default function AccessPointsPage() {
       const uploads = [
         uploadFile(pingFile),
         uploadFile(speedFile),
-        interfazFile ? uploadFile(interfazFile) : Promise.resolve(""),
+        interfaz24File ? uploadFile(interfaz24File) : Promise.resolve(""),
+        interfaz5File ? uploadFile(interfaz5File) : Promise.resolve(""),
       ];
-      const [pingUrl, speedUrl, interfazUrl] = await Promise.all(uploads);
+      const [pingUrl, speedUrl, interfaz24Url, interfaz5Url] = await Promise.all(uploads);
       const res = await fetch(`/api/access-points/${selectedAP.id}/mediciones`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           aula,
-          interfazImage: interfazUrl,
+          interfaz24Image: interfaz24Url,
+          interfaz5Image: interfaz5Url,
           pingImage: pingUrl,
           speedImage: speedUrl,
           notas: notas || null,
@@ -598,32 +607,64 @@ export default function AccessPointsPage() {
               <Input id="aula" value={aula} onChange={(e) => setAula(e.target.value)} placeholder="Ej: Aula 201, Lab. Computo 1" />
             </div>
 
-            {/* Interfaz capture */}
+            {/* Interfaz 2.4 GHz capture */}
             <div className="space-y-2">
-              <Label>Captura de Interfaz (opcional)</Label>
-              <input ref={interfazCameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileSelect(e.target.files?.[0] || null, setInterfazFile, setInterfazPreview)} />
-              <input ref={interfazFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFileSelect(e.target.files?.[0] || null, setInterfazFile, setInterfazPreview)} />
-              {interfazPreview ? (
+              <Label>Captura de Interfaz 2.4 GHz (opcional)</Label>
+              <input ref={interfaz24CameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileSelect(e.target.files?.[0] || null, setInterfaz24File, setInterfaz24Preview)} />
+              <input ref={interfaz24FileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFileSelect(e.target.files?.[0] || null, setInterfaz24File, setInterfaz24Preview)} />
+              {interfaz24Preview ? (
                 <div className="relative group">
-                  <img src={interfazPreview} alt="Interfaz preview" className="w-full h-40 object-cover rounded-lg border" />
+                  <img src={interfaz24Preview} alt="Interfaz 2.4 GHz" className="w-full h-40 object-cover rounded-lg border" />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
-                    <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => interfazCameraRef.current?.click()}>
+                    <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => interfaz24CameraRef.current?.click()}>
                       <Camera className="mr-1 h-4 w-4" /> Retomar
                     </Button>
-                    <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => interfazFileRef.current?.click()}>
+                    <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => interfaz24FileRef.current?.click()}>
                       <ImageIcon className="mr-1 h-4 w-4" /> Cambiar
                     </Button>
-                    <Button size="sm" variant="destructive" className="cursor-pointer" onClick={() => { setInterfazFile(null); setInterfazPreview(null); }}>
+                    <Button size="sm" variant="destructive" className="cursor-pointer" onClick={() => { setInterfaz24File(null); setInterfaz24Preview(null); }}>
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
               ) : (
                 <div className="flex gap-2">
-                  <Button type="button" variant="outline" className="flex-1 cursor-pointer" onClick={() => interfazCameraRef.current?.click()}>
+                  <Button type="button" variant="outline" className="flex-1 cursor-pointer" onClick={() => interfaz24CameraRef.current?.click()}>
                     <Camera className="mr-2 h-4 w-4" /> Tomar Foto
                   </Button>
-                  <Button type="button" variant="outline" className="flex-1 cursor-pointer" onClick={() => interfazFileRef.current?.click()}>
+                  <Button type="button" variant="outline" className="flex-1 cursor-pointer" onClick={() => interfaz24FileRef.current?.click()}>
+                    <ImageIcon className="mr-2 h-4 w-4" /> Galeria / Archivo
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Interfaz 5 GHz capture */}
+            <div className="space-y-2">
+              <Label>Captura de Interfaz 5 GHz (opcional)</Label>
+              <input ref={interfaz5CameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileSelect(e.target.files?.[0] || null, setInterfaz5File, setInterfaz5Preview)} />
+              <input ref={interfaz5FileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFileSelect(e.target.files?.[0] || null, setInterfaz5File, setInterfaz5Preview)} />
+              {interfaz5Preview ? (
+                <div className="relative group">
+                  <img src={interfaz5Preview} alt="Interfaz 5 GHz" className="w-full h-40 object-cover rounded-lg border" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                    <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => interfaz5CameraRef.current?.click()}>
+                      <Camera className="mr-1 h-4 w-4" /> Retomar
+                    </Button>
+                    <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => interfaz5FileRef.current?.click()}>
+                      <ImageIcon className="mr-1 h-4 w-4" /> Cambiar
+                    </Button>
+                    <Button size="sm" variant="destructive" className="cursor-pointer" onClick={() => { setInterfaz5File(null); setInterfaz5Preview(null); }}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" className="flex-1 cursor-pointer" onClick={() => interfaz5CameraRef.current?.click()}>
+                    <Camera className="mr-2 h-4 w-4" /> Tomar Foto
+                  </Button>
+                  <Button type="button" variant="outline" className="flex-1 cursor-pointer" onClick={() => interfaz5FileRef.current?.click()}>
                     <ImageIcon className="mr-2 h-4 w-4" /> Galeria / Archivo
                   </Button>
                 </div>

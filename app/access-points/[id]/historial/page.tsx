@@ -32,7 +32,8 @@ import { ArrowLeft, Eye, X, Image as ImageIcon } from "lucide-react";
 interface Medicion {
   id: string;
   aula: string;
-  interfazImage: string;
+  interfaz24Image: string;
+  interfaz5Image: string;
   pingImage: string;
   speedImage: string;
   notas: string | null;
@@ -204,7 +205,8 @@ export default function HistorialPage() {
                   <TableHead className="w-[60px]">#</TableHead>
                   <TableHead>Fecha</TableHead>
                   <TableHead>Aula</TableHead>
-                  <TableHead className="text-center">Interfaz</TableHead>
+                  <TableHead className="text-center">2.4 GHz</TableHead>
+                  <TableHead className="text-center">5 GHz</TableHead>
                   <TableHead className="text-center">Ping 8.8.8.8</TableHead>
                   <TableHead className="text-center">Velocidad</TableHead>
                   <TableHead>Notas</TableHead>
@@ -217,7 +219,7 @@ export default function HistorialPage() {
                 {ap.mediciones.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={8}
+                      colSpan={9}
                       className="text-center py-12 text-muted-foreground"
                     >
                       No hay mediciones registradas para este AP
@@ -248,12 +250,24 @@ export default function HistorialPage() {
                         <Badge variant="secondary">{med.aula || "---"}</Badge>
                       </TableCell>
                       <TableCell className="text-center">
-                        {med.interfazImage ? (
+                        {med.interfaz24Image ? (
                           <button
-                            onClick={() => setPreviewImage(med.interfazImage)}
+                            onClick={() => setPreviewImage(med.interfaz24Image)}
                             className="inline-block border rounded-md overflow-hidden hover:ring-2 hover:ring-primary transition-all cursor-pointer"
                           >
-                            <img src={med.interfazImage} alt="Interfaz" className="h-16 w-28 object-cover" />
+                            <img src={med.interfaz24Image} alt="2.4 GHz" className="h-16 w-28 object-cover" />
+                          </button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {med.interfaz5Image ? (
+                          <button
+                            onClick={() => setPreviewImage(med.interfaz5Image)}
+                            className="inline-block border rounded-md overflow-hidden hover:ring-2 hover:ring-primary transition-all cursor-pointer"
+                          >
+                            <img src={med.interfaz5Image} alt="5 GHz" className="h-16 w-28 object-cover" />
                           </button>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
@@ -350,18 +364,36 @@ export default function HistorialPage() {
                   </span>
                 </div>
               </div>
-              {selectedMed.interfazImage && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4" />
-                    Interfaz
-                  </p>
-                  <div
-                    className="border rounded-lg overflow-hidden cursor-pointer hover:opacity-80 hover:ring-2 hover:ring-primary transition-all"
-                    onClick={() => setPreviewImage(selectedMed.interfazImage)}
-                  >
-                    <img src={selectedMed.interfazImage} alt="Interfaz" className="w-full h-auto" />
-                  </div>
+              {(selectedMed.interfaz24Image || selectedMed.interfaz5Image) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {selectedMed.interfaz24Image && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4" />
+                        Interfaz 2.4 GHz
+                      </p>
+                      <div
+                        className="border rounded-lg overflow-hidden cursor-pointer hover:opacity-80 hover:ring-2 hover:ring-primary transition-all"
+                        onClick={() => setPreviewImage(selectedMed.interfaz24Image)}
+                      >
+                        <img src={selectedMed.interfaz24Image} alt="2.4 GHz" className="w-full h-auto" />
+                      </div>
+                    </div>
+                  )}
+                  {selectedMed.interfaz5Image && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4" />
+                        Interfaz 5 GHz
+                      </p>
+                      <div
+                        className="border rounded-lg overflow-hidden cursor-pointer hover:opacity-80 hover:ring-2 hover:ring-primary transition-all"
+                        onClick={() => setPreviewImage(selectedMed.interfaz5Image)}
+                      >
+                        <img src={selectedMed.interfaz5Image} alt="5 GHz" className="w-full h-auto" />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
