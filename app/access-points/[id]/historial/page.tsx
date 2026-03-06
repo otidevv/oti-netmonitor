@@ -48,6 +48,7 @@ interface AccessPoint {
   pabellon: string;
   piso: string;
   ubicacion: string;
+  ip: string;
   nombreSenal: string;
   densidadSenal: string;
   mediciones: Medicion[];
@@ -169,6 +170,10 @@ export default function HistorialPage() {
             <div>
               <span className="text-muted-foreground">Piso:</span>{" "}
               <span className="font-medium">{ap.piso}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">IP:</span>{" "}
+              <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{ap.ip}</code>
             </div>
             <div>
               <span className="text-muted-foreground">Senal:</span>{" "}

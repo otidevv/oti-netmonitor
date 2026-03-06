@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +32,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Plus, FileText, Eye, Image as ImageIcon, X } from "lucide-react";
+import { Plus, FileText, Eye, Image as ImageIcon, X, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { generateConstanciaPDF } from "@/lib/generate-constancia";
 
@@ -129,7 +129,6 @@ function Checkbox({
 const defaultForm = {
   fecha: new Date().toISOString().split("T")[0],
   carreraProfesional: "",
-  cantidadAulas: 5,
   aulasText: "",
   seccionProyector: true,
   seccionMinipc: true,
@@ -170,9 +169,18 @@ export default function VerificacionesPage() {
   const [openDetail, setOpenDetail] = useState(false);
   const [selected, setSelected] = useState<Verificacion | null>(null);
   const [proyectorCalibracionFile, setProyectorCalibracionFile] = useState<File | null>(null);
+  const [proyectorPreview, setProyectorPreview] = useState<string | null>(null);
   const [minipcConectividadFile, setMinipcConectividadFile] = useState<File | null>(null);
+  const [minipcPreview, setMinipcPreview] = useState<string | null>(null);
   const [internetConectividadFile, setInternetConectividadFile] = useState<File | null>(null);
+  const [internetPreview, setInternetPreview] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState("");
+  const proyectorCamRef = useRef<HTMLInputElement>(null);
+  const proyectorFileRef = useRef<HTMLInputElement>(null);
+  const minipcCamRef = useRef<HTMLInputElement>(null);
+  const minipcFileRef = useRef<HTMLInputElement>(null);
+  const internetCamRef = useRef<HTMLInputElement>(null);
+  const internetFileRef = useRef<HTMLInputElement>(null);
 
   const fetchData = useCallback(async () => {
     const res = await fetch("/api/verificaciones");
@@ -188,6 +196,19 @@ export default function VerificacionesPage() {
     key: K,
     val: (typeof defaultForm)[K]
   ) => setForm((prev) => ({ ...prev, [key]: val }));
+
+  const handleImgSelect = (
+    file: File | null,
+    setFile: (f: File | null) => void,
+    setPreview: (p: string | null) => void
+  ) => {
+    setFile(file);
+    if (file) {
+      setPreview(URL.createObjectURL(file));
+    } else {
+      setPreview(null);
+    }
+  };
 
   const uploadFile = async (file: File): Promise<string> => {
     const formData = new FormData();
@@ -215,7 +236,7 @@ export default function VerificacionesPage() {
       const payload = {
         fecha: form.fecha,
         carreraProfesional: form.carreraProfesional,
-        cantidadAulas: form.cantidadAulas,
+        cantidadAulas: nombresAulas.length,
         nombresAulas,
         seccionProyector: form.seccionProyector,
         seccionMinipc: form.seccionMinipc,
@@ -259,8 +280,11 @@ export default function VerificacionesPage() {
       if (!res.ok) throw new Error();
       setForm(defaultForm);
       setProyectorCalibracionFile(null);
+      setProyectorPreview(null);
       setMinipcConectividadFile(null);
+      setMinipcPreview(null);
       setInternetConectividadFile(null);
+      setInternetPreview(null);
       setOpenCreate(false);
       await fetchData();
       toast.success("Verificacion registrada correctamente", {
@@ -376,30 +400,21 @@ export default function VerificacionesPage() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cantAulas">Cantidad de Aulas</Label>
-                  <Input
-                    id="cantAulas"
-                    type="number"
-                    min={1}
-                    value={form.cantidadAulas}
-                    onChange={(e) =>
-                      set("cantidadAulas", parseInt(e.target.value) || 1)
-                    }
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="nombresAulas">
-                    Nombres de Aulas (separados por coma)
-                  </Label>
-                  <Input
-                    id="nombresAulas"
-                    value={form.aulasText}
-                    onChange={(e) => set("aulasText", e.target.value)}
-                    placeholder="Ej: 101, 102, 103, 104, 105"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="nombresAulas">
+                  Nombre de Aula
+                </Label>
+                <Input
+                  id="nombresAulas"
+                  value={form.aulasText}
+                  onChange={(e) => set("aulasText", e.target.value)}
+                  placeholder="Ej: 101"
+                />
+                {form.aulasText && (
+                  <p className="text-xs text-muted-foreground">
+                    {form.aulasText.split(",").map(s => s.trim()).filter(Boolean).length} aula(s) detectada(s)
+                  </p>
+                )}
               </div>
 
               <Separator />
@@ -465,12 +480,23 @@ export default function VerificacionesPage() {
                       </div>
                       <div className="space-y-1">
                         <Label className="text-sm">Captura de calibracion (opcional)</Label>
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          className="cursor-pointer"
-                          onChange={(e) => setProyectorCalibracionFile(e.target.files?.[0] || null)}
-                        />
+                        <input ref={proyectorCamRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleImgSelect(e.target.files?.[0] || null, setProyectorCalibracionFile, setProyectorPreview)} />
+                        <input ref={proyectorFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleImgSelect(e.target.files?.[0] || null, setProyectorCalibracionFile, setProyectorPreview)} />
+                        {proyectorPreview ? (
+                          <div className="relative group">
+                            <img src={proyectorPreview} alt="Calibracion" className="w-full h-28 object-cover rounded-lg border" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                              <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => proyectorCamRef.current?.click()}><Camera className="mr-1 h-3 w-3" /> Retomar</Button>
+                              <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => proyectorFileRef.current?.click()}><ImageIcon className="mr-1 h-3 w-3" /> Cambiar</Button>
+                              <Button size="sm" variant="destructive" className="cursor-pointer" onClick={() => { setProyectorCalibracionFile(null); setProyectorPreview(null); }}><X className="h-3 w-3" /></Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <Button type="button" variant="outline" size="sm" className="flex-1 cursor-pointer" onClick={() => proyectorCamRef.current?.click()}><Camera className="mr-1 h-3 w-3" /> Camara</Button>
+                            <Button type="button" variant="outline" size="sm" className="flex-1 cursor-pointer" onClick={() => proyectorFileRef.current?.click()}><ImageIcon className="mr-1 h-3 w-3" /> Archivo</Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </>
@@ -568,12 +594,23 @@ export default function VerificacionesPage() {
                 </div>
                 <div className="mt-2">
                   <Label className="text-sm">Captura de conectividad Mini PC (opcional)</Label>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    className="cursor-pointer mt-1"
-                    onChange={(e) => setMinipcConectividadFile(e.target.files?.[0] || null)}
-                  />
+                  <input ref={minipcCamRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleImgSelect(e.target.files?.[0] || null, setMinipcConectividadFile, setMinipcPreview)} />
+                  <input ref={minipcFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleImgSelect(e.target.files?.[0] || null, setMinipcConectividadFile, setMinipcPreview)} />
+                  {minipcPreview ? (
+                    <div className="relative group mt-1">
+                      <img src={minipcPreview} alt="Conectividad Mini PC" className="w-full h-28 object-cover rounded-lg border" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                        <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => minipcCamRef.current?.click()}><Camera className="mr-1 h-3 w-3" /> Retomar</Button>
+                        <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => minipcFileRef.current?.click()}><ImageIcon className="mr-1 h-3 w-3" /> Cambiar</Button>
+                        <Button size="sm" variant="destructive" className="cursor-pointer" onClick={() => { setMinipcConectividadFile(null); setMinipcPreview(null); }}><X className="h-3 w-3" /></Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 mt-1">
+                      <Button type="button" variant="outline" size="sm" className="flex-1 cursor-pointer" onClick={() => minipcCamRef.current?.click()}><Camera className="mr-1 h-3 w-3" /> Camara</Button>
+                      <Button type="button" variant="outline" size="sm" className="flex-1 cursor-pointer" onClick={() => minipcFileRef.current?.click()}><ImageIcon className="mr-1 h-3 w-3" /> Archivo</Button>
+                    </div>
+                  )}
                 </div>
                 </>)}
               </div>
@@ -701,12 +738,23 @@ export default function VerificacionesPage() {
                     </div>
                     <div className="mt-2">
                       <Label className="text-sm">Captura de conectividad WiFi (opcional)</Label>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        className="cursor-pointer mt-1"
-                        onChange={(e) => setInternetConectividadFile(e.target.files?.[0] || null)}
-                      />
+                      <input ref={internetCamRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleImgSelect(e.target.files?.[0] || null, setInternetConectividadFile, setInternetPreview)} />
+                      <input ref={internetFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleImgSelect(e.target.files?.[0] || null, setInternetConectividadFile, setInternetPreview)} />
+                      {internetPreview ? (
+                        <div className="relative group mt-1">
+                          <img src={internetPreview} alt="Conectividad WiFi" className="w-full h-28 object-cover rounded-lg border" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                            <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => internetCamRef.current?.click()}><Camera className="mr-1 h-3 w-3" /> Retomar</Button>
+                            <Button size="sm" variant="secondary" className="cursor-pointer" onClick={() => internetFileRef.current?.click()}><ImageIcon className="mr-1 h-3 w-3" /> Cambiar</Button>
+                            <Button size="sm" variant="destructive" className="cursor-pointer" onClick={() => { setInternetConectividadFile(null); setInternetPreview(null); }}><X className="h-3 w-3" /></Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2 mt-1">
+                          <Button type="button" variant="outline" size="sm" className="flex-1 cursor-pointer" onClick={() => internetCamRef.current?.click()}><Camera className="mr-1 h-3 w-3" /> Camara</Button>
+                          <Button type="button" variant="outline" size="sm" className="flex-1 cursor-pointer" onClick={() => internetFileRef.current?.click()}><ImageIcon className="mr-1 h-3 w-3" /> Archivo</Button>
+                        </div>
+                      )}
                     </div>
                   </>
                 )}

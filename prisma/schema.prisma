@@ -17,6 +17,7 @@ model AccessPoint {
   pabellon        String
   piso            String   @default("")
   ubicacion       String
+  ip              String   @default("")
   nombreSenal     String
   densidadSenal   String
   createdAt       DateTime @default(now())

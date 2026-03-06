@@ -37,7 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useRouter } from "next/navigation";
-import { Plus, History, Upload, Search, X, Camera, ImageIcon } from "lucide-react";
+import { Plus, History, Upload, Search, X, Camera, ImageIcon, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 interface Medicion {
@@ -59,6 +59,7 @@ interface AccessPoint {
   pabellon: string;
   piso: string;
   ubicacion: string;
+  ip: string;
   nombreSenal: string;
   densidadSenal: string;
   createdAt: string;
@@ -74,6 +75,7 @@ const initialForm = {
   pabellon: "",
   piso: "",
   ubicacion: "",
+  ip: "",
   nombreSenal: "",
   densidadSenal: "",
 };
@@ -100,6 +102,11 @@ export default function AccessPointsPage() {
   const speedFileRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPabellon, setFilterPabellon] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [openEdit, setOpenEdit] = useState(false);
+  const [editForm, setEditForm] = useState(initialForm);
+  const [editId, setEditId] = useState("");
 
   const fetchAPs = useCallback(async () => {
     const res = await fetch("/api/access-points");
@@ -126,6 +133,49 @@ export default function AccessPointsPage() {
       toast.success("Access Point registrado correctamente");
     } catch {
       toast.error("Error al registrar el Access Point");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatMacInput = (value: string) => {
+    // Remove non-hex chars, uppercase, insert : every 2 chars, max 17 chars (XX:XX:XX:XX:XX:XX)
+    const clean = value.replace(/[^a-fA-F0-9]/g, "").toUpperCase().slice(0, 12);
+    return clean.match(/.{1,2}/g)?.join(":") || clean;
+  };
+
+  const openEditDialog = (ap: AccessPoint) => {
+    setEditId(ap.id);
+    setEditForm({
+      ap: ap.ap,
+      marca: ap.marca,
+      modelo: ap.modelo,
+      mac: ap.mac,
+      codPatrimonial: ap.codPatrimonial,
+      pabellon: ap.pabellon,
+      piso: ap.piso,
+      ubicacion: ap.ubicacion,
+      ip: ap.ip,
+      nombreSenal: ap.nombreSenal,
+      densidadSenal: ap.densidadSenal,
+    });
+    setOpenEdit(true);
+  };
+
+  const handleUpdate = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/access-points/${editId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
+      });
+      if (!res.ok) throw new Error();
+      setOpenEdit(false);
+      await fetchAPs();
+      toast.success("Access Point actualizado correctamente");
+    } catch {
+      toast.error("Error al actualizar el Access Point");
     } finally {
       setLoading(false);
     }
@@ -211,6 +261,12 @@ export default function AccessPointsPage() {
     return matchSearch && matchPabellon;
   });
 
+  const totalPages = Math.ceil(filtered.length / rowsPerPage);
+  const paginatedAPs = filtered.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
+
   return (
     <main className="container mx-auto px-4 py-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -249,7 +305,7 @@ export default function AccessPointsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="mac">MAC</Label>
-                <Input id="mac" value={form.mac} onChange={(e) => setForm({ ...form, mac: e.target.value })} placeholder="Ej: AA:BB:CC:DD:EE:FF" />
+                <Input id="mac" value={form.mac} onChange={(e) => setForm({ ...form, mac: formatMacInput(e.target.value) })} placeholder="Ej: AA:BB:CC:DD:EE:FF" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="codPatrimonial">Cod. Patrimonial</Label>
@@ -284,6 +340,10 @@ export default function AccessPointsPage() {
               <div className="space-y-2 col-span-2">
                 <Label htmlFor="ubicacion">Ubicacion</Label>
                 <Input id="ubicacion" value={form.ubicacion} onChange={(e) => setForm({ ...form, ubicacion: e.target.value })} placeholder="Ej: Oficina 201, Sala de reuniones" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ip">Direccion IP</Label>
+                <Input id="ip" value={form.ip} onChange={(e) => setForm({ ...form, ip: e.target.value })} placeholder="Ej: 192.168.1.10" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="nombreSenal">Nombre de Senal</Label>
@@ -338,10 +398,10 @@ export default function AccessPointsPage() {
                 placeholder="Buscar por AP, marca, senal, MAC, ubicacion..."
                 className="pl-10"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               />
             </div>
-            <Select value={filterPabellon} onValueChange={setFilterPabellon}>
+            <Select value={filterPabellon} onValueChange={(v) => { setFilterPabellon(v); setCurrentPage(1); }}>
               <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Filtrar por pabellon" />
               </SelectTrigger>
@@ -375,6 +435,7 @@ export default function AccessPointsPage() {
                   <TableHead>Pabellon</TableHead>
                   <TableHead>Piso</TableHead>
                   <TableHead>Ubicacion</TableHead>
+                  <TableHead>IP</TableHead>
                   <TableHead>Senal</TableHead>
                   <TableHead>Densidad</TableHead>
                   <TableHead>Mediciones</TableHead>
@@ -384,12 +445,12 @@ export default function AccessPointsPage() {
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                       No se encontraron Access Points
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtered.map((ap) => (
+                  paginatedAPs.map((ap) => (
                     <TableRow key={ap.id}>
                       <TableCell className="font-medium">{ap.ap}</TableCell>
                       <TableCell>{ap.marca}</TableCell>
@@ -401,11 +462,17 @@ export default function AccessPointsPage() {
                       <TableCell><Badge variant="secondary">{ap.pabellon}</Badge></TableCell>
                       <TableCell>{ap.piso}</TableCell>
                       <TableCell>{ap.ubicacion}</TableCell>
+                      <TableCell>
+                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{ap.ip}</code>
+                      </TableCell>
                       <TableCell>{ap.nombreSenal}</TableCell>
                       <TableCell>{ap.densidadSenal}</TableCell>
                       <TableCell><Badge variant="outline">{ap.mediciones.length}</Badge></TableCell>
                       <TableCell>
                         <div className="flex gap-1">
+                          <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => openEditDialog(ap)} title="Editar AP">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => { setSelectedAP(ap); setOpenMedicion(true); }} title="Agregar medicion">
                             <Upload className="h-4 w-4" />
                           </Button>
@@ -419,6 +486,74 @@ export default function AccessPointsPage() {
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Pagination */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Filas por pagina:</span>
+              <Select value={String(rowsPerPage)} onValueChange={(v) => { setRowsPerPage(Number(v)); setCurrentPage(1); }}>
+                <SelectTrigger className="w-[70px] h-8 cursor-pointer">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="ml-2">
+                {filtered.length === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1}-{Math.min(currentPage * rowsPerPage, filtered.length)} de {filtered.length}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="cursor-pointer"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((page) => {
+                  if (totalPages <= 7) return true;
+                  if (page === 1 || page === totalPages) return true;
+                  if (Math.abs(page - currentPage) <= 1) return true;
+                  return false;
+                })
+                .reduce<(number | string)[]>((acc, page, idx, arr) => {
+                  if (idx > 0 && page - (arr[idx - 1] as number) > 1) acc.push("...");
+                  acc.push(page);
+                  return acc;
+                }, [])
+                .map((item, idx) =>
+                  item === "..." ? (
+                    <span key={`dots-${idx}`} className="px-2 text-muted-foreground">...</span>
+                  ) : (
+                    <Button
+                      key={item}
+                      variant={currentPage === item ? "default" : "outline"}
+                      size="sm"
+                      className="cursor-pointer w-8 h-8 p-0"
+                      onClick={() => setCurrentPage(item as number)}
+                    >
+                      {item}
+                    </Button>
+                  )
+                )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="cursor-pointer"
+                disabled={currentPage === totalPages || totalPages === 0}
+                onClick={() => setCurrentPage((p) => p + 1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -511,6 +646,88 @@ export default function AccessPointsPage() {
             <Button variant="outline" onClick={() => setOpenMedicion(false)}>Cancelar</Button>
             <Button onClick={handleAddMedicion} disabled={loading || !aula || !pingFile || !speedFile}>
               {loading ? "Subiendo..." : "Guardar Medicion"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Edit AP */}
+      <Dialog open={openEdit} onOpenChange={setOpenEdit}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Access Point</DialogTitle>
+            <DialogDescription>
+              Modifique los datos del Access Point.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="space-y-2">
+              <Label>AP</Label>
+              <Input value={editForm.ap} onChange={(e) => setEditForm({ ...editForm, ap: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Marca</Label>
+              <Input value={editForm.marca} onChange={(e) => setEditForm({ ...editForm, marca: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Modelo</Label>
+              <Input value={editForm.modelo} onChange={(e) => setEditForm({ ...editForm, modelo: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>MAC</Label>
+              <Input value={editForm.mac} onChange={(e) => setEditForm({ ...editForm, mac: formatMacInput(e.target.value) })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Cod. Patrimonial</Label>
+              <Input value={editForm.codPatrimonial} onChange={(e) => setEditForm({ ...editForm, codPatrimonial: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Pabellon</Label>
+              <Select value={editForm.pabellon} onValueChange={(v) => setEditForm({ ...editForm, pabellon: v })}>
+                <SelectTrigger className="cursor-pointer">
+                  <SelectValue placeholder="Seleccionar pabellon" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Pabellon A">Pabellon A</SelectItem>
+                  <SelectItem value="Pabellon B">Pabellon B</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Piso</Label>
+              <Select value={editForm.piso} onValueChange={(v) => setEditForm({ ...editForm, piso: v })}>
+                <SelectTrigger className="cursor-pointer">
+                  <SelectValue placeholder="Seleccionar piso" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Piso 1">Piso 1</SelectItem>
+                  <SelectItem value="Piso 2">Piso 2</SelectItem>
+                  <SelectItem value="Piso 3">Piso 3</SelectItem>
+                  <SelectItem value="Piso 4">Piso 4</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2 col-span-2">
+              <Label>Ubicacion</Label>
+              <Input value={editForm.ubicacion} onChange={(e) => setEditForm({ ...editForm, ubicacion: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Direccion IP</Label>
+              <Input value={editForm.ip} onChange={(e) => setEditForm({ ...editForm, ip: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Nombre de Senal</Label>
+              <Input value={editForm.nombreSenal} onChange={(e) => setEditForm({ ...editForm, nombreSenal: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Densidad de Senal</Label>
+              <Input value={editForm.densidadSenal} onChange={(e) => setEditForm({ ...editForm, densidadSenal: e.target.value })} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setOpenEdit(false)}>Cancelar</Button>
+            <Button onClick={handleUpdate} disabled={loading}>
+              {loading ? "Guardando..." : "Actualizar AP"}
             </Button>
           </div>
         </DialogContent>

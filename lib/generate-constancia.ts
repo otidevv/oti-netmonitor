@@ -61,14 +61,17 @@ export function generateConstanciaPDF(data: VerificacionData) {
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
 
-  const fechaObj = new Date(data.fecha + "T12:00:00");
-  const dia = fechaObj.getDate();
+  const now = new Date();
+  const fechaStr = data.fecha ? data.fecha.split("T")[0] : "";
+  const fechaObj = fechaStr ? new Date(fechaStr + "T12:00:00") : null;
+  const fechaValid = fechaObj && !isNaN(fechaObj.getTime());
+  const dia = fechaValid ? fechaObj.getDate() : now.getDate();
   const meses = [
     "enero", "febrero", "marzo", "abril", "mayo", "junio",
     "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
   ];
-  const mes = meses[fechaObj.getMonth()];
-  const anio = fechaObj.getFullYear();
+  const mes = fechaValid ? meses[fechaObj.getMonth()] : meses[now.getMonth()];
+  const anio = fechaValid ? fechaObj.getFullYear() : now.getFullYear();
 
   const aulasListStr = data.nombresAulas.join(", ");
   const cantTexto =
@@ -76,7 +79,8 @@ export function generateConstanciaPDF(data: VerificacionData) {
       ? "1 (01) aula digital"
       : `${data.cantidadAulas} (0${data.cantidadAulas}) aulas digitales`;
 
-  const intro = `Por medio de la presente, se deja constancia que con fecha ${dia} de ${mes} del ${anio}, se realizo la verificacion tecnica, revision de instalacion y pruebas de funcionamiento de las ${cantTexto} (${aulasListStr}) de la Carrera Profesional de ${data.carreraProfesional} de la UNAMAD.`;
+  const articuloAulas = data.cantidadAulas === 1 ? "del" : "de las";
+  const intro = `Por medio de la presente, se deja constancia que con fecha ${dia} de ${mes} del ${anio}, se realizo la verificacion tecnica, revision de instalacion y pruebas de funcionamiento ${articuloAulas} ${cantTexto} (${aulasListStr}) de la Carrera Profesional de ${data.carreraProfesional} de la UNAMAD.`;
 
   const lines = doc.splitTextToSize(intro, contentWidth);
   doc.text(lines, margin, y);
@@ -183,10 +187,15 @@ export function generateConstanciaPDF(data: VerificacionData) {
   }
 
   // Conclusion
-  const estado = data.operativas
+  const estadoSingular = data.operativas
+    ? "plenamente operativa y habilitada"
+    : "con observaciones pendientes";
+  const estadoPlural = data.operativas
     ? "plenamente operativas y habilitadas"
     : "con observaciones pendientes";
-  const conclusion = `Luego de efectuadas las pruebas correspondientes, se certifica que los equipos antes mencionados se encuentran debidamente instalados y en optimas condiciones de funcionamiento, quedando las ${cantTexto} (${aulasListStr}) ${estado} para el desarrollo de actividades academicas en el periodo lectivo ${anio}.`;
+  const estado = data.cantidadAulas === 1 ? estadoSingular : estadoPlural;
+  const quedando = data.cantidadAulas === 1 ? "quedando el" : "quedando las";
+  const conclusion = `Luego de efectuadas las pruebas correspondientes, se certifica que los equipos antes mencionados se encuentran debidamente instalados y en optimas condiciones de funcionamiento, ${quedando} ${cantTexto} (${aulasListStr}) ${estado} para el desarrollo de actividades academicas en el periodo lectivo ${anio}.`;
   const concLines = doc.splitTextToSize(conclusion, contentWidth);
   doc.text(concLines, margin, y);
   y += concLines.length * 5 + 4;
