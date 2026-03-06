@@ -79,8 +79,10 @@ export function generateConstanciaPDF(data: VerificacionData) {
       ? "1 (01) aula digital"
       : `${data.cantidadAulas} (0${data.cantidadAulas}) aulas digitales`;
 
-  const articuloAulas = data.cantidadAulas === 1 ? "del" : "de las";
-  const intro = `Por medio de la presente, se deja constancia que con fecha ${dia} de ${mes} del ${anio}, se realizo la verificacion tecnica, revision de instalacion y pruebas de funcionamiento ${articuloAulas} ${cantTexto} (${aulasListStr}) de la Carrera Profesional de ${data.carreraProfesional} de la UNAMAD.`;
+  const introParte = data.cantidadAulas === 1
+    ? `del aula digital (${aulasListStr})`
+    : `de las ${cantTexto} (${aulasListStr})`;
+  const intro = `Por medio de la presente, se deja constancia que con fecha ${dia} de ${mes} del ${anio}, se realizo la verificacion tecnica, revision de instalacion y pruebas de funcionamiento ${introParte} de la Carrera Profesional de ${data.carreraProfesional} de la UNAMAD.`;
 
   const lines = doc.splitTextToSize(intro, contentWidth);
   doc.text(lines, margin, y);
@@ -194,8 +196,10 @@ export function generateConstanciaPDF(data: VerificacionData) {
     ? "plenamente operativas y habilitadas"
     : "con observaciones pendientes";
   const estado = data.cantidadAulas === 1 ? estadoSingular : estadoPlural;
-  const quedando = data.cantidadAulas === 1 ? "quedando el" : "quedando las";
-  const conclusion = `Luego de efectuadas las pruebas correspondientes, se certifica que los equipos antes mencionados se encuentran debidamente instalados y en optimas condiciones de funcionamiento, ${quedando} ${cantTexto} (${aulasListStr}) ${estado} para el desarrollo de actividades academicas en el periodo lectivo ${anio}.`;
+  const aulaParte = data.cantidadAulas === 1
+    ? `quedando el aula digital (${aulasListStr})`
+    : `quedando las ${cantTexto} (${aulasListStr})`;
+  const conclusion = `Luego de efectuadas las pruebas correspondientes, se certifica que los equipos antes mencionados se encuentran debidamente instalados y en optimas condiciones de funcionamiento, ${aulaParte} ${estado} para el desarrollo de actividades academicas en el periodo lectivo ${anio}.`;
   const concLines = doc.splitTextToSize(conclusion, contentWidth);
   doc.text(concLines, margin, y);
   y += concLines.length * 5 + 4;

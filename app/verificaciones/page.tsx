@@ -850,6 +850,7 @@ export default function VerificacionesPage() {
                   <TableHead>Audio</TableHead>
                   <TableHead>Internet</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead>Fotos</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -857,7 +858,7 @@ export default function VerificacionesPage() {
                 {verificaciones.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={10}
+                      colSpan={11}
                       className="text-center py-8 text-muted-foreground"
                     >
                       No hay verificaciones registradas
@@ -920,6 +921,28 @@ export default function VerificacionesPage() {
                               Con observaciones
                             </Badge>
                           )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            {v.proyectorCalibracionImg && (
+                              <button onClick={() => setPreviewImage(v.proyectorCalibracionImg!)} className="border rounded overflow-hidden hover:ring-2 hover:ring-primary transition-all cursor-pointer" title="Calibracion proyector">
+                                <img src={v.proyectorCalibracionImg} alt="Proyector" className="h-8 w-12 object-cover" />
+                              </button>
+                            )}
+                            {v.minipcConectividadImg && (
+                              <button onClick={() => setPreviewImage(v.minipcConectividadImg!)} className="border rounded overflow-hidden hover:ring-2 hover:ring-primary transition-all cursor-pointer" title="Conectividad Mini PC">
+                                <img src={v.minipcConectividadImg} alt="Mini PC" className="h-8 w-12 object-cover" />
+                              </button>
+                            )}
+                            {v.internetConectividadImg && (
+                              <button onClick={() => setPreviewImage(v.internetConectividadImg!)} className="border rounded overflow-hidden hover:ring-2 hover:ring-primary transition-all cursor-pointer" title="Conectividad WiFi">
+                                <img src={v.internetConectividadImg} alt="WiFi" className="h-8 w-12 object-cover" />
+                              </button>
+                            )}
+                            {!v.proyectorCalibracionImg && !v.minipcConectividadImg && !v.internetConectividadImg && (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
